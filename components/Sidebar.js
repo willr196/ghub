@@ -16,7 +16,7 @@ const navItems = [
   { id: 'recipes', path: '/recipes', icon: '🍳', label: 'Recipes', requiresAuth: false },
   { id: 'blog', path: '/blog', icon: '📝', label: 'Blog', requiresAuth: false },
   { id: 'gallery', path: '/gallery', icon: '📸', label: 'Gallery', requiresAuth: false },
-  { id: 'science', path: '/science', icon: '🔬', label: 'Science', requiresAuth: false },
+  { id: 'science', path: '/science', icon: '��', label: 'Science', requiresAuth: false },
   { id: 'merch', path: '/merch', icon: '🛍️', label: 'Merch', requiresAuth: false },
 ]
 
