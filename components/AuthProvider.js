@@ -12,6 +12,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // If supabase isn't configured, skip auth setup
     if (!supabase) {
       setLoading(false)
       return
@@ -19,9 +20,15 @@ export function AuthProvider({ children }) {
 
     // Get initial session
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user ?? null)
+      } catch (error) {
+        console.error('Error getting session:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
     }
 
     getSession()
@@ -38,27 +45,39 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signUp = async (email, password) => {
-    if (!supabase) return { error: { message: 'Supabase not configured' } }
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-    return { data, error }
+    if (!supabase) return { error: { message: 'Database not configured' } }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+      return { data, error }
+    } catch (error) {
+      return { error: { message: 'An unexpected error occurred' } }
+    }
   }
 
   const signIn = async (email, password) => {
-    if (!supabase) return { error: { message: 'Supabase not configured' } }
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { data, error }
+    if (!supabase) return { error: { message: 'Database not configured' } }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      return { data, error }
+    } catch (error) {
+      return { error: { message: 'An unexpected error occurred' } }
+    }
   }
 
   const signOut = async () => {
-    if (!supabase) return { error: { message: 'Supabase not configured' } }
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    if (!supabase) return { error: { message: 'Database not configured' } }
+    try {
+      const { error } = await supabase.auth.signOut()
+      return { error }
+    } catch (error) {
+      return { error: { message: 'An unexpected error occurred' } }
+    }
   }
 
   const value = {
