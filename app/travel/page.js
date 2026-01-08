@@ -9,7 +9,9 @@ export default function TravelPage() {
   const { user, isAuthenticated } = useAuth()
   const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('All')
   const [formData, setFormData] = useState({
     country: '',
@@ -25,43 +27,87 @@ export default function TravelPage() {
   useEffect(() => { fetchTrips() }, [user])
 
   const fetchTrips = async () => {
-    if (!supabase) { setLoading(false); return }
-    
-    let query = supabase.from('travel').select('*').order('date_visited', { ascending: false })
-    
-    // If not logged in, only show public trips
-    if (!user) {
-      query = query.eq('is_public', true)
+    if (!supabase) {
+      setError('Database connection not available')
+      setLoading(false)
+      return
     }
-    
-    const { data } = await query
-    if (data) setTrips(data)
-    setLoading(false)
+
+    try {
+      let query = supabase
+        .from('travel')
+        .select('*')
+        .order('date_visited', { ascending: false })
+      
+      // If not logged in, only show public trips
+      if (!user) {
+        query = query.eq('is_public', true)
+      }
+      
+      const { data, error: fetchError } = await query
+      if (fetchError) throw fetchError
+      setTrips(data || [])
+      setError(null)
+    } catch (e) {
+      console.error('Error fetching trips:', e)
+      setError('Failed to load travel entries. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!supabase || !user) return
-    
-    await supabase.from('travel').insert([{ ...formData, user_id: user.id }])
-    fetchTrips()
-    setShowForm(false)
-    setFormData({
-      country: '',
-      city: '',
-      description: '',
-      highlights: '',
-      date_visited: '',
-      rating: 5,
-      would_return: true,
-      is_public: true
-    })
+    if (!supabase || !user) {
+      setError('You must be logged in to add trips')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      const { error: insertError } = await supabase
+        .from('travel')
+        .insert([{ ...formData, user_id: user.id }])
+      
+      if (insertError) throw insertError
+      
+      await fetchTrips()
+      setShowForm(false)
+      setFormData({
+        country: '',
+        city: '',
+        description: '',
+        highlights: '',
+        date_visited: '',
+        rating: 5,
+        would_return: true,
+        is_public: true
+      })
+    } catch (e) {
+      console.error('Error adding trip:', e)
+      setError('Failed to add trip. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDelete = async (id) => {
-    if (!supabase || !confirm('Delete this trip?')) return
-    await supabase.from('travel').delete().eq('id', id)
-    fetchTrips()
+    if (!confirm('Delete this trip?')) return
+    if (!supabase) {
+      setError('Database connection not available')
+      return
+    }
+
+    try {
+      const { error: deleteError } = await supabase.from('travel').delete().eq('id', id)
+      if (deleteError) throw deleteError
+      await fetchTrips()
+    } catch (e) {
+      console.error('Error deleting trip:', e)
+      setError('Failed to delete trip. Please try again.')
+    }
   }
 
   // Get unique countries for filter
@@ -86,7 +132,16 @@ export default function TravelPage() {
 
   const getFlag = (country) => countryFlags[country] || '🌍'
 
-  if (loading) return <div className="flex min-h-screen"><Sidebar /><main className="flex-1 ml-64 p-8 flex items-center justify-center"><div className="spinner" /></main></div>
+  if (loading) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+          <div className="spinner" />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen bg-dark-bg">
@@ -104,6 +159,13 @@ export default function TravelPage() {
               </button>
             )}
           </div>
+
+          {error && (
+            <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg">
+              {error}
+              <button onClick={() => setError(null)} className="ml-4 text-error/70 hover:text-error">✕</button>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -213,7 +275,9 @@ export default function TravelPage() {
                   <span className="text-sm text-gray-400">Make public</span>
                 </label>
               </div>
-              <button type="submit" className="btn-primary">Save Trip</button>
+              <button type="submit" disabled={saving} className="btn-primary">
+                {saving ? 'Saving...' : 'Save Trip'}
+              </button>
             </form>
           )}
 
@@ -224,7 +288,11 @@ export default function TravelPage() {
                 <button 
                   key={c} 
                   onClick={() => setFilter(c)} 
-                  className={`px-4 py-2 rounded-full text-sm transition-colors ${filter === c ? 'gradient-bg text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                  className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                    filter === c 
+                      ? 'gradient-bg text-white' 
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                  }`}
                 >
                   {c !== 'All' && <span className="mr-1">{getFlag(c)}</span>}
                   {c}
@@ -287,7 +355,9 @@ export default function TravelPage() {
           ) : (
             <div className="card text-center py-12">
               <span className="text-5xl block mb-4">✈️</span>
-              <p className="text-gray-400">No trips logged yet. {isAuthenticated ? 'Add your first adventure!' : 'Check back soon!'}</p>
+              <p className="text-gray-400">
+                No trips logged yet. {isAuthenticated ? 'Add your first adventure!' : 'Check back soon!'}
+              </p>
             </div>
           )}
         </div>

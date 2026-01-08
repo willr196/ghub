@@ -15,18 +15,9 @@ export default function RegisterPage() {
   const { signUp } = useAuth()
   const router = useRouter()
 
-  // Secret code from environment variable
-  const VALID_SECRET_CODE = process.env.NEXT_PUBLIC_SECRET_CODE || 'GHUB_CHRISTMAS_2024'
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-
-    // Validate secret code
-    if (secretCode !== VALID_SECRET_CODE) {
-      setError('Invalid secret code. Please enter the correct code to register.')
-      return
-    }
 
     // Validate passwords match
     if (password !== confirmPassword) {
@@ -42,14 +33,35 @@ export default function RegisterPage() {
 
     setLoading(true)
 
-    const { error } = await signUp(email, password)
+    try {
+      // Validate secret code server-side (not exposed to client)
+      const codeResponse = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: secretCode })
+      })
 
-    if (error) {
-      setError(error.message)
+      const codeResult = await codeResponse.json()
+
+      if (!codeResult.valid) {
+        setError('Invalid secret code. Please enter the correct code to register.')
+        setLoading(false)
+        return
+      }
+
+      // Code is valid, proceed with registration
+      const { error } = await signUp(email, password)
+
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+      } else {
+        // Show success message and redirect
+        router.push('/login?registered=true')
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.')
       setLoading(false)
-    } else {
-      // Show success message and redirect
-      router.push('/login?registered=true')
     }
   }
 

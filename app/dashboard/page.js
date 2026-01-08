@@ -17,11 +17,12 @@ const quotes = [
 export default function DashboardPage() {
   const { user } = useAuth()
   const [quote, setQuote] = useState('')
-  const [dailyLog, setDailyLog] = useState({ water: 0, sleep: 0, mood: '', energy: 0 })
+  const [dailyLog, setDailyLog] = useState({ water_intake: 0, sleep_hours: 0, mood: '', energy: 0 })
   const [sobriety, setSobriety] = useState({ alcoholDays: 0, smokeDays: 0 })
   const [recentWorkouts, setRecentWorkouts] = useState([])
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     setQuote(quotes[Math.floor(Math.random() * quotes.length)])
@@ -29,32 +30,86 @@ export default function DashboardPage() {
   }, [user])
 
   const fetchDashboardData = async () => {
+    if (!supabase) {
+      setError('Database connection not available')
+      setLoading(false)
+      return
+    }
+
     try {
-      const { data: workouts } = await supabase.from('workouts').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(5)
+      // Fetch workouts
+      const { data: workouts, error: workoutsError } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(5)
+      
+      if (workoutsError) throw workoutsError
       if (workouts) setRecentWorkouts(workouts)
 
+      // Fetch today's log
       const today = new Date().toISOString().split('T')[0]
-      const { data: log } = await supabase.from('daily_logs').select('*').eq('user_id', user.id).eq('date', today).single()
+      const { data: log, error: logError } = await supabase
+        .from('daily_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single()
+      
+      // single() throws error if no row found, which is okay
+      if (logError && logError.code !== 'PGRST116') throw logError
       if (log) setDailyLog(log)
 
-      const { data: goalsData } = await supabase.from('goals').select('*').eq('user_id', user.id).eq('completed', false).limit(3)
+      // Fetch goals
+      const { data: goalsData, error: goalsError } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('completed', false)
+        .limit(3)
+      
+      if (goalsError) throw goalsError
       if (goalsData) setGoals(goalsData)
 
-      const { data: sobrietyData } = await supabase.from('sobriety').select('*').eq('user_id', user.id).eq('is_active', true)
+      // Fetch sobriety data
+      const { data: sobrietyData, error: sobrietyError } = await supabase
+        .from('sobriety')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+      
+      if (sobrietyError) throw sobrietyError
       if (sobrietyData) {
         const alcohol = sobrietyData.find(s => s.type === 'alcohol')
         const smoking = sobrietyData.find(s => s.type === 'smoking')
         const calcDays = (d) => d ? Math.floor((new Date() - new Date(d)) / 86400000) : 0
         setSobriety({ alcoholDays: calcDays(alcohol?.start_date), smokeDays: calcDays(smoking?.start_date) })
       }
-    } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    } catch (e) {
+      console.error('Dashboard fetch error:', e)
+      setError('Failed to load some dashboard data')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="spinner" /></div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="spinner" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
+      {error && (
+        <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
       <div>
         <h1 className="font-display text-4xl font-bold mb-3">Welcome to GHUB 💪</h1>
         <div className="bg-white/5 border-l-4 border-primary rounded-r-lg px-6 py-4 italic text-gray-400">"{quote}"</div>
@@ -62,8 +117,8 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard icon="🔥" label="Workouts This Week" value={recentWorkouts.length} color="orange" />
-        <StatCard icon="💧" label="Water Today" value={`${dailyLog.water || 0}/8`} unit="glasses" color="blue" />
-        <StatCard icon="😴" label="Sleep Last Night" value={dailyLog.sleep || '-'} unit="hrs" color="purple" />
+        <StatCard icon="💧" label="Water Today" value={`${dailyLog.water_intake || 0}/8`} unit="glasses" color="blue" />
+        <StatCard icon="😴" label="Sleep Last Night" value={dailyLog.sleep_hours || '-'} unit="hrs" color="purple" />
         <StatCard icon="⚡" label="Energy Level" value={dailyLog.energy || '-'} unit="/5" color="yellow" />
       </div>
 
