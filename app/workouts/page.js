@@ -14,7 +14,15 @@ export default function WorkoutsPage() {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState({ name: '', type: 'Strength', duration: 30, calories: 200, notes: '' })
+  const [showExercises, setShowExercises] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'Strength',
+    duration: 30,
+    calories: 200,
+    notes: '',
+    exercises: []
+  })
 
   useEffect(() => { if (user) fetchWorkouts() }, [user])
 
@@ -56,19 +64,49 @@ export default function WorkoutsPage() {
     try {
       const { error: insertError } = await supabase
         .from('workouts')
-        .insert([{ ...formData, user_id: user.id, date: new Date().toISOString().split('T')[0] }])
-      
+        .insert([{
+          name: formData.name,
+          type: formData.type,
+          duration: formData.duration,
+          calories: formData.calories,
+          notes: formData.notes,
+          exercises: formData.exercises.length > 0 ? formData.exercises.filter(e => e.name.trim()) : null,
+          user_id: user.id,
+          date: new Date().toISOString().split('T')[0]
+        }])
+
       if (insertError) throw insertError
-      
+
       await fetchWorkouts()
       setShowForm(false)
-      setFormData({ name: '', type: 'Strength', duration: 30, calories: 200, notes: '' })
+      setShowExercises(false)
+      setFormData({ name: '', type: 'Strength', duration: 30, calories: 200, notes: '', exercises: [] })
     } catch (e) {
       console.error('Error saving workout:', e)
       setError('Failed to save workout. Please try again.')
     } finally {
       setSaving(false)
     }
+  }
+
+  const addExercise = () => {
+    setFormData({
+      ...formData,
+      exercises: [...formData.exercises, { name: '', sets: 3, reps: 10, weight: '' }]
+    })
+  }
+
+  const removeExercise = (index) => {
+    setFormData({
+      ...formData,
+      exercises: formData.exercises.filter((_, i) => i !== index)
+    })
+  }
+
+  const updateExercise = (index, field, value) => {
+    const updated = [...formData.exercises]
+    updated[index] = { ...updated[index], [field]: value }
+    setFormData({ ...formData, exercises: updated })
   }
 
   const handleDelete = async (id) => {
@@ -161,13 +199,76 @@ export default function WorkoutsPage() {
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Notes</label>
-                <textarea 
-                  value={formData.notes} 
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})} 
-                  placeholder="How did it go?" 
-                  rows={3} 
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  placeholder="How did it go?"
+                  rows={3}
                 />
               </div>
+
+              <div className="border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowExercises(!showExercises)}
+                  className="btn-secondary w-full mb-4"
+                >
+                  {showExercises ? '- Hide Exercises' : '+ Add Individual Exercises (Optional)'}
+                </button>
+
+                {showExercises && (
+                  <div className="space-y-3">
+                    {formData.exercises.map((exercise, index) => (
+                      <div key={index} className="p-4 bg-white/5 rounded-lg space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-400">Exercise {index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeExercise(index)}
+                            className="text-error text-sm hover:text-red-400"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          <input
+                            value={exercise.name}
+                            onChange={(e) => updateExercise(index, 'name', e.target.value)}
+                            placeholder="Exercise name (e.g., Bench Press)"
+                          />
+                          <input
+                            value={exercise.weight}
+                            onChange={(e) => updateExercise(index, 'weight', e.target.value)}
+                            placeholder="Weight (e.g., 135 lbs)"
+                          />
+                          <input
+                            type="number"
+                            value={exercise.sets}
+                            onChange={(e) => updateExercise(index, 'sets', parseInt(e.target.value) || 0)}
+                            placeholder="Sets"
+                            min="1"
+                          />
+                          <input
+                            type="number"
+                            value={exercise.reps}
+                            onChange={(e) => updateExercise(index, 'reps', parseInt(e.target.value) || 0)}
+                            placeholder="Reps"
+                            min="1"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addExercise}
+                      className="btn-secondary w-full text-sm"
+                    >
+                      + Add Another Exercise
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button type="submit" disabled={saving} className="btn-primary">
                 {saving ? 'Saving...' : 'Save Workout'}
               </button>
@@ -179,26 +280,46 @@ export default function WorkoutsPage() {
             {workouts.length > 0 ? (
               <div className="space-y-3">
                 {workouts.map((w) => (
-                  <div key={w.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium">{w.name}</span>
-                        <span className="text-xs px-2 py-1 bg-primary/20 text-primary-light rounded">{w.type}</span>
+                  <div key={w.id} className="p-4 bg-white/5 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium">{w.name}</span>
+                          <span className="text-xs px-2 py-1 bg-primary/20 text-primary-light rounded">{w.type}</span>
+                        </div>
+                        <div className="text-sm text-gray-400 mt-1">
+                          {new Date(w.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">
-                        {new Date(w.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      <div className="flex items-center gap-6">
+                        <span className="text-sm text-gray-400">⏱️ {w.duration} min</span>
+                        <span className="text-sm text-gray-400">🔥 {w.calories} kcal</span>
+                        <button
+                          onClick={() => handleDelete(w.id)}
+                          className="text-error hover:text-red-400 transition-colors"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <span className="text-sm text-gray-400">⏱️ {w.duration} min</span>
-                      <span className="text-sm text-gray-400">🔥 {w.calories} kcal</span>
-                      <button 
-                        onClick={() => handleDelete(w.id)} 
-                        className="text-error hover:text-red-400 transition-colors"
-                      >
-                        🗑️
-                      </button>
-                    </div>
+
+                    {w.exercises && w.exercises.length > 0 && (
+                      <div className="pl-4 border-l-2 border-primary/30 space-y-2">
+                        {w.exercises.map((ex, i) => (
+                          <div key={i} className="flex items-center justify-between text-sm">
+                            <span className="text-gray-300">{ex.name}</span>
+                            <span className="text-gray-500">
+                              {ex.sets} × {ex.reps}
+                              {ex.weight && ` @ ${ex.weight}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {w.notes && (
+                      <p className="text-sm text-gray-400 italic">{w.notes}</p>
+                    )}
                   </div>
                 ))}
               </div>

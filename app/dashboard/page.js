@@ -37,14 +37,21 @@ export default function DashboardPage() {
     }
 
     try {
-      // Fetch workouts
+      // Get start of this week (Sunday)
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - dayOfWeek)
+      startOfWeek.setHours(0, 0, 0, 0)
+
+      // Fetch workouts from this week
       const { data: workouts, error: workoutsError } = await supabase
         .from('workouts')
         .select('*')
         .eq('user_id', user.id)
+        .gte('date', startOfWeek.toISOString().split('T')[0])
         .order('date', { ascending: false })
-        .limit(5)
-      
+
       if (workoutsError) throw workoutsError
       if (workouts) setRecentWorkouts(workouts)
 

@@ -12,6 +12,7 @@ export default function BlogPage() {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({ title: '', content: '', excerpt: '', is_public: true })
 
   useEffect(() => { fetchPosts() }, [user])
@@ -24,12 +25,19 @@ export default function BlogPage() {
     }
 
     try {
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('blog_posts')
         .select('*')
-        .eq('is_public', true)
         .order('created_at', { ascending: false })
-      
+
+      // Show public posts + user's own posts if logged in
+      if (user) {
+        query = query.or(`is_public.eq.true,user_id.eq.${user.id}`)
+      } else {
+        query = query.eq('is_public', true)
+      }
+
+      const { data, error: fetchError } = await query
       if (fetchError) throw fetchError
       setPosts(data || [])
       setError(null)
@@ -52,24 +60,74 @@ export default function BlogPage() {
     setError(null)
 
     try {
-      const { error: insertError } = await supabase
-        .from('blog_posts')
-        .insert([{ 
-          ...formData, 
-          user_id: user.id, 
-          published_at: new Date().toISOString() 
-        }])
-      
-      if (insertError) throw insertError
-      
+      if (editingId) {
+        // Update existing post
+        const { error: updateError } = await supabase
+          .from('blog_posts')
+          .update({
+            title: formData.title,
+            content: formData.content,
+            excerpt: formData.excerpt,
+            is_public: formData.is_public,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingId)
+
+        if (updateError) throw updateError
+      } else {
+        // Insert new post
+        const { error: insertError } = await supabase
+          .from('blog_posts')
+          .insert([{
+            ...formData,
+            user_id: user.id,
+            published_at: new Date().toISOString()
+          }])
+
+        if (insertError) throw insertError
+      }
+
       await fetchPosts()
       setShowForm(false)
+      setEditingId(null)
       setFormData({ title: '', content: '', excerpt: '', is_public: true })
     } catch (e) {
-      console.error('Error publishing post:', e)
-      setError('Failed to publish post. Please try again.')
+      console.error('Error saving post:', e)
+      setError('Failed to save post. Please try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleEdit = (post) => {
+    setEditingId(post.id)
+    setFormData({
+      title: post.title,
+      content: post.content || '',
+      excerpt: post.excerpt || '',
+      is_public: post.is_public
+    })
+    setShowForm(true)
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this post?')) return
+    if (!supabase) {
+      setError('Database connection not available')
+      return
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('blog_posts')
+        .delete()
+        .eq('id', id)
+
+      if (deleteError) throw deleteError
+      await fetchPosts()
+    } catch (e) {
+      console.error('Error deleting post:', e)
+      setError('Failed to delete post. Please try again.')
     }
   }
 
@@ -95,7 +153,14 @@ export default function BlogPage() {
               <p className="text-gray-400 mt-1">Reflections, wins, and lessons learned</p>
             </div>
             {isAuthenticated && (
-              <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+              <button
+                onClick={() => {
+                  setShowForm(!showForm)
+                  setEditingId(null)
+                  setFormData({ title: '', content: '', excerpt: '', is_public: true })
+                }}
+                className="btn-primary"
+              >
                 {showForm ? 'Cancel' : '+ Write Post'}
               </button>
             )}
@@ -110,7 +175,7 @@ export default function BlogPage() {
 
           {showForm && (
             <form onSubmit={handleSubmit} className="card space-y-4">
-              <h3 className="font-display text-lg font-semibold">Write New Post</h3>
+              <h3 className="font-display text-lg font-semibold">{editingId ? 'Edit Post' : 'Write New Post'}</h3>
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Title</label>
                 <input 
@@ -148,7 +213,7 @@ export default function BlogPage() {
                 <span className="text-sm text-gray-400">Make this post public</span>
               </label>
               <button type="submit" disabled={saving} className="btn-primary">
-                {saving ? 'Publishing...' : 'Publish Post'}
+                {saving ? 'Saving...' : editingId ? 'Update Post' : 'Publish Post'}
               </button>
             </form>
           )}
@@ -172,6 +237,22 @@ export default function BlogPage() {
                   <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap">
                     {post.content}
                   </div>
+                  {user && post.user_id === user.id && (
+                    <div className="flex gap-2 mt-6 pt-6 border-t border-white/10">
+                      <button
+                        onClick={() => handleEdit(post)}
+                        className="btn-secondary text-sm"
+                      >
+                        ✏️ Edit Post
+                      </button>
+                      <button
+                        onClick={() => handleDelete(post.id)}
+                        className="btn-secondary text-sm text-error"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  )}
                 </article>
               ))}
             </div>

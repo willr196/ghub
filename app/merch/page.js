@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Sidebar from '@/components/Sidebar'
 
 const products = [
@@ -20,6 +21,10 @@ const products = [
 const categories = ['All', 'Equipment', 'Supplements', 'Apparel', 'Accessories', 'Recovery', 'Tech']
 
 export default function MerchPage() {
+  const [filter, setFilter] = useState('All')
+
+  const filteredProducts = filter === 'All' ? products : products.filter(p => p.category === filter)
+
   return (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
@@ -31,11 +36,23 @@ export default function MerchPage() {
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            {categories.map(c => <button key={c} className="px-4 py-2 rounded-full text-sm bg-white/5 text-gray-400 hover:bg-white/10">{c}</button>)}
+            {categories.map(c => (
+              <button
+                key={c}
+                onClick={() => setFilter(c)}
+                className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                  filter === c
+                    ? 'gradient-bg text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product, i) => (
+            {filteredProducts.map((product, i) => (
               <div key={i} className="card overflow-hidden group">
                 <div className="h-28 flex items-center justify-center text-5xl bg-gradient-to-br from-primary/10 to-accent/10 -mx-6 -mt-6 mb-4 group-hover:scale-105 transition-transform">{product.icon}</div>
                 <span className="text-xs text-accent uppercase tracking-wider">{product.category}</span>
