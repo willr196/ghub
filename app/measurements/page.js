@@ -54,10 +54,12 @@ export default function MeasurementsPage() {
     setError(null)
 
     try {
+      // Safely parse measurements - validate numbers and filter out NaN
       const cleanData = Object.fromEntries(
         Object.entries(formData)
           .filter(([_, v]) => v !== '')
           .map(([k, v]) => [k, parseFloat(v)])
+          .filter(([_, v]) => !isNaN(v))
       )
 
       if (editingId) {
@@ -261,8 +263,9 @@ export default function MeasurementsPage() {
               <div className="flex items-end justify-around h-48 gap-2">
                 {measurements.filter(m => m.weight).slice(0, 10).reverse().map((m, i) => {
                   const weights = measurements.filter(x => x.weight).map(x => x.weight)
-                  const min = Math.min(...weights)
-                  const max = Math.max(...weights)
+                  // Safely calculate min/max with fallbacks for edge cases
+                  const min = weights.length > 0 ? Math.min(...weights) : 0
+                  const max = weights.length > 0 ? Math.max(...weights) : 0
                   const range = max - min || 1
                   const height = ((m.weight - min) / range) * 100 + 20
                   return (

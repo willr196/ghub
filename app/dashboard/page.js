@@ -134,11 +134,11 @@ export default function DashboardPage() {
           <h3 className="font-display text-lg font-semibold mb-4">🏆 Current Streaks</h3>
           <div className="flex gap-8">
             <div className="text-center">
-              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.alcoholDays}</span>
+              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.alcoholDays || 0}</span>
               <span className="text-gray-400 text-sm">Days Alcohol Free</span>
             </div>
             <div className="text-center">
-              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.smokeDays}</span>
+              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.smokeDays || 0}</span>
               <span className="text-gray-400 text-sm">Days Smoke Free</span>
             </div>
           </div>

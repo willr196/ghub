@@ -77,11 +77,18 @@ export default function RecipesPage() {
     setError(null)
 
     try {
+      // Safely parse ingredients - split by newline, trim, filter empty, store as array
+      const ingredientsArray = formData.ingredients
+        ? formData.ingredients.split('\n')
+            .map(i => i.trim())
+            .filter(i => i.length > 0)
+        : null
+
       const recipeData = {
         name: formData.name,
         category: formData.category,
         description: formData.description,
-        ingredients: formData.ingredients ? JSON.parse(`[${formData.ingredients.split('\n').map(i => `"${i.trim()}"`).join(',')}]`) : null,
+        ingredients: ingredientsArray,
         instructions: formData.instructions,
         calories: parseInt(formData.calories) || null,
         protein: parseInt(formData.protein) || null,
@@ -137,11 +144,16 @@ export default function RecipesPage() {
 
   const handleEdit = (recipe) => {
     setEditingId(recipe.id)
+    // Safely handle ingredients - check if it's an array before joining
+    const ingredientsText = recipe.ingredients && Array.isArray(recipe.ingredients)
+      ? recipe.ingredients.join('\n')
+      : ''
+
     setFormData({
       name: recipe.name,
       category: recipe.category || 'Breakfast',
       description: recipe.description || '',
-      ingredients: recipe.ingredients ? recipe.ingredients.join('\n') : '',
+      ingredients: ingredientsText,
       instructions: recipe.instructions || '',
       calories: recipe.calories || '',
       protein: recipe.protein || '',
