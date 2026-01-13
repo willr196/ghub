@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 const workoutTypes = ['Strength', 'Cardio', 'HIIT', 'Flexibility', 'Sports', 'Other']
@@ -24,9 +25,7 @@ export default function WorkoutsPage() {
     exercises: []
   })
 
-  useEffect(() => { if (user) fetchWorkouts() }, [user])
-
-  const fetchWorkouts = async () => {
+  const fetchWorkouts = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -49,7 +48,9 @@ export default function WorkoutsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { if (user) fetchWorkouts() }, [user, fetchWorkouts])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -126,18 +127,14 @@ export default function WorkoutsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <div className="spinner" />
-        </main>
-      </div>
-    )
-  }
-
-  return (
+  const content = loading ? (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <div className="spinner" />
+      </main>
+    </div>
+  ) : (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
@@ -333,4 +330,6 @@ export default function WorkoutsPage() {
       </main>
     </div>
   )
+
+  return <RequireAuth>{content}</RequireAuth>
 }

@@ -89,7 +89,7 @@ git push -u origin main
 |------|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
-| `NEXT_PUBLIC_SECRET_CODE` | `GHUB_CHRISTMAS_2024` (or change this!) |
+| `SECRET_CODE` | `GHUB_CHRISTMAS_2024` (or change this!) |
 
 5. Click **"Deploy"**
 6. Wait 1-2 minutes for the build
@@ -117,7 +117,7 @@ When you give this to your sister:
 
 ### Changing the Secret Code
 
-Before deployment, change `NEXT_PUBLIC_SECRET_CODE` in Vercel to something personal like:
+Before deployment, change `SECRET_CODE` in Vercel to something personal like:
 - `MERRY_CHRISTMAS_SIS`
 - `GHUB_FOR_[HER_NAME]`
 - Any phrase you both would know

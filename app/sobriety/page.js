@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 const alcoholBenefits = [
@@ -37,9 +38,7 @@ export default function SobrietyPage() {
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({ type: 'alcohol', start_date: new Date().toISOString().split('T')[0] })
 
-  useEffect(() => { if (user) fetchSobriety() }, [user])
-
-  const fetchSobriety = async () => {
+  const fetchSobriety = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -62,7 +61,9 @@ export default function SobrietyPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { if (user) fetchSobriety() }, [user, fetchSobriety])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -105,18 +106,14 @@ export default function SobrietyPage() {
   const alcoholDays = alcohol ? calcDays(alcohol.start_date) : 0
   const smokingDays = smoking ? calcDays(smoking.start_date) : 0
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <div className="spinner" />
-        </main>
-      </div>
-    )
-  }
-
-  return (
+  const content = loading ? (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <div className="spinner" />
+      </main>
+    </div>
+  ) : (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
@@ -203,7 +200,7 @@ export default function SobrietyPage() {
                   )}
                 </div>
               )}
-              {!alcohol && <p className="text-gray-400">Click "Start Tracking" to begin</p>}
+              {!alcohol && <p className="text-gray-400">Click &quot;Start Tracking&quot; to begin</p>}
             </div>
 
             {/* Smoking Card */}
@@ -241,7 +238,7 @@ export default function SobrietyPage() {
                   )}
                 </div>
               )}
-              {!smoking && <p className="text-gray-400">Click "Start Tracking" to begin</p>}
+              {!smoking && <p className="text-gray-400">Click &quot;Start Tracking&quot; to begin</p>}
             </div>
           </div>
 
@@ -276,4 +273,6 @@ export default function SobrietyPage() {
       </main>
     </div>
   )
+
+  return <RequireAuth>{content}</RequireAuth>
 }

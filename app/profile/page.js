@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 export default function ProfilePage() {
@@ -13,9 +14,7 @@ export default function ProfilePage() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
 
-  useEffect(() => { if (user) fetchProfile() }, [user])
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -44,7 +43,9 @@ export default function ProfilePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { if (user) fetchProfile() }, [user, fetchProfile])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -79,18 +80,14 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <div className="spinner" />
-        </main>
-      </div>
-    )
-  }
-
-  return (
+  const content = loading ? (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <div className="spinner" />
+      </main>
+    </div>
+  ) : (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
@@ -182,4 +179,6 @@ export default function ProfilePage() {
       </main>
     </div>
   )
+
+  return <RequireAuth>{content}</RequireAuth>
 }

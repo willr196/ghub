@@ -95,7 +95,7 @@ export default function Home() {
       <div className="bg-dark-card/50 py-16">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <blockquote className="text-2xl md:text-3xl font-light text-gray-300 italic">
-            "The only bad workout is the one that didn't happen."
+            &ldquo;The only bad workout is the one that didn&apos;t happen.&rdquo;
           </blockquote>
         </div>
       </div>

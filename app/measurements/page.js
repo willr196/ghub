@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 export default function MeasurementsPage() {
@@ -15,9 +16,7 @@ export default function MeasurementsPage() {
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({ weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '' })
 
-  useEffect(() => { if (user) fetchMeasurements() }, [user])
-
-  const fetchMeasurements = async () => {
+  const fetchMeasurements = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -41,7 +40,9 @@ export default function MeasurementsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { if (user) fetchMeasurements() }, [user, fetchMeasurements])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -108,18 +109,14 @@ export default function MeasurementsPage() {
   const oldest = measurements[measurements.length - 1] || {}
   const weightChange = latest.weight && oldest.weight ? (latest.weight - oldest.weight).toFixed(1) : 0
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <div className="spinner" />
-        </main>
-      </div>
-    )
-  }
-
-  return (
+  const content = loading ? (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <div className="spinner" />
+      </main>
+    </div>
+  ) : (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
@@ -250,7 +247,7 @@ export default function MeasurementsPage() {
                 ].map(m => (
                   <div key={m.label} className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
                     <span className="text-gray-400">{m.label}</span>
-                    <span className="font-semibold">{m.value || '--'}"</span>
+                    <span className="font-semibold">{m.value || '--'}&quot;</span>
                   </div>
                 ))}
               </div>
@@ -289,4 +286,6 @@ export default function MeasurementsPage() {
       </main>
     </div>
   )
+
+  return <RequireAuth>{content}</RequireAuth>
 }

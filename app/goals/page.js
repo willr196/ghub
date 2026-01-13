@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 export default function GoalsPage() {
@@ -14,9 +15,7 @@ export default function GoalsPage() {
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({ name: '', target: '', current: 0, unit: '', category: 'Fitness' })
 
-  useEffect(() => { if (user) fetchGoals() }, [user])
-
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -39,7 +38,9 @@ export default function GoalsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { if (user) fetchGoals() }, [user, fetchGoals])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -111,21 +112,17 @@ export default function GoalsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <div className="spinner" />
-        </main>
-      </div>
-    )
-  }
-
   const activeGoals = goals.filter(g => !g.completed)
   const completedGoals = goals.filter(g => g.completed)
 
-  return (
+  const content = loading ? (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <div className="spinner" />
+      </main>
+    </div>
+  ) : (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
@@ -283,4 +280,6 @@ export default function GoalsPage() {
       </main>
     </div>
   )
+
+  return <RequireAuth>{content}</RequireAuth>
 }

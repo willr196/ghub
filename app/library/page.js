@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 export default function WorkoutLibraryPage() {
@@ -20,9 +21,7 @@ export default function WorkoutLibraryPage() {
     exercises: [{ name: '', sets: 3, reps: 10, notes: '' }]
   })
 
-  useEffect(() => { if (user) fetchWorkouts() }, [user])
-
-  const fetchWorkouts = async () => {
+  const fetchWorkouts = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -45,7 +44,9 @@ export default function WorkoutLibraryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { if (user) fetchWorkouts() }, [user, fetchWorkouts])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -154,7 +155,7 @@ export default function WorkoutLibraryPage() {
     setFormData({ ...formData, exercises: updated })
   }
 
-  const useTemplate = async (workout) => {
+  const startFromTemplate = async (workout) => {
     if (!confirm('Start a workout using this template? This will create a workout log for today.')) return
     if (!supabase) {
       setError('Database connection not available')
@@ -183,18 +184,14 @@ export default function WorkoutLibraryPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <div className="spinner" />
-        </main>
-      </div>
-    )
-  }
-
-  return (
+  const content = loading ? (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <div className="spinner" />
+      </main>
+    </div>
+  ) : (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
@@ -356,7 +353,7 @@ export default function WorkoutLibraryPage() {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => useTemplate(workout)}
+                    onClick={() => startFromTemplate(workout)}
                     className="btn-primary flex-1"
                   >
                     ▶️ Start Workout
@@ -390,4 +387,6 @@ export default function WorkoutLibraryPage() {
       </main>
     </div>
   )
+
+  return <RequireAuth>{content}</RequireAuth>
 }

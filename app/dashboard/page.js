@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
@@ -24,12 +24,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    setQuote(quotes[Math.floor(Math.random() * quotes.length)])
-    if (user) fetchDashboardData()
-  }, [user])
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -99,7 +94,12 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    setQuote(quotes[Math.floor(Math.random() * quotes.length)])
+    if (user) fetchDashboardData()
+  }, [user, fetchDashboardData])
 
   if (loading) {
     return (
@@ -119,7 +119,7 @@ export default function DashboardPage() {
 
       <div>
         <h1 className="font-display text-4xl font-bold mb-3">Welcome to GHUB 💪</h1>
-        <div className="bg-white/5 border-l-4 border-primary rounded-r-lg px-6 py-4 italic text-gray-400">"{quote}"</div>
+        <div className="bg-white/5 border-l-4 border-primary rounded-r-lg px-6 py-4 italic text-gray-400">&ldquo;{quote}&rdquo;</div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">

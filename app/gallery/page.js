@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Sidebar from '@/components/Sidebar'
@@ -12,9 +12,7 @@ export default function GalleryPage() {
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('All')
 
-  useEffect(() => { fetchMedia() }, [user])
-
-  const fetchMedia = async () => {
+  const fetchMedia = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -44,7 +42,9 @@ export default function GalleryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { fetchMedia() }, [fetchMedia])
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this item?')) return

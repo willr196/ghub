@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Sidebar from '@/components/Sidebar'
@@ -24,9 +24,7 @@ export default function TravelPage() {
     is_public: true
   })
 
-  useEffect(() => { fetchTrips() }, [user])
-
-  const fetchTrips = async () => {
+  const fetchTrips = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -54,7 +52,9 @@ export default function TravelPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { fetchTrips() }, [fetchTrips])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

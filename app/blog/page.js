@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import Sidebar from '@/components/Sidebar'
@@ -15,9 +15,7 @@ export default function BlogPage() {
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({ title: '', content: '', excerpt: '', is_public: true })
 
-  useEffect(() => { fetchPosts() }, [user])
-
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -47,7 +45,9 @@ export default function BlogPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => { fetchPosts() }, [fetchPosts])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

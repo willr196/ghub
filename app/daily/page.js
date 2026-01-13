@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
+import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 export default function DailyPage() {
@@ -15,9 +16,7 @@ export default function DailyPage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  useEffect(() => { if (user) fetchLog() }, [user])
-
-  const fetchLog = async () => {
+  const fetchLog = useCallback(async () => {
     if (!supabase) {
       setError('Database connection not available')
       setLoading(false)
@@ -42,7 +41,9 @@ export default function DailyPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [today, user])
+
+  useEffect(() => { if (user) fetchLog() }, [user, fetchLog])
 
   const saveLog = async () => {
     if (!supabase) {
@@ -112,18 +113,14 @@ export default function DailyPage() {
     { emoji: '😄', value: 'great' }
   ]
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
-          <div className="spinner" />
-        </main>
-      </div>
-    )
-  }
-
-  return (
+  const content = loading ? (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <div className="spinner" />
+      </main>
+    </div>
+  ) : (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
       <main className="flex-1 ml-64 p-8">
@@ -144,7 +141,7 @@ export default function DailyPage() {
 
           {success && (
             <div className="bg-success/10 border border-success/20 text-success px-4 py-3 rounded-lg">
-              ✓ Today's log saved successfully!
+              ✓ Today&apos;s log saved successfully!
             </div>
           )}
 
@@ -233,7 +230,7 @@ export default function DailyPage() {
 
           {/* Notes */}
           <div className="card">
-            <h3 className="font-display text-lg font-semibold mb-4">📝 Today's Notes</h3>
+            <h3 className="font-display text-lg font-semibold mb-4">📝 Today&apos;s Notes</h3>
             <textarea 
               value={log.notes || ''} 
               onChange={(e) => setLog({...log, notes: e.target.value})} 
@@ -249,4 +246,6 @@ export default function DailyPage() {
       </main>
     </div>
   )
+
+  return <RequireAuth>{content}</RequireAuth>
 }
