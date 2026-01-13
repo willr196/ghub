@@ -37,14 +37,21 @@ export default function DashboardPage() {
     }
 
     try {
-      // Fetch workouts
+      // Get start of this week (Sunday)
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - dayOfWeek)
+      startOfWeek.setHours(0, 0, 0, 0)
+
+      // Fetch workouts from this week
       const { data: workouts, error: workoutsError } = await supabase
         .from('workouts')
         .select('*')
         .eq('user_id', user.id)
+        .gte('date', startOfWeek.toISOString().split('T')[0])
         .order('date', { ascending: false })
-        .limit(5)
-      
+
       if (workoutsError) throw workoutsError
       if (workouts) setRecentWorkouts(workouts)
 
@@ -127,11 +134,11 @@ export default function DashboardPage() {
           <h3 className="font-display text-lg font-semibold mb-4">🏆 Current Streaks</h3>
           <div className="flex gap-8">
             <div className="text-center">
-              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.alcoholDays}</span>
+              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.alcoholDays || 0}</span>
               <span className="text-gray-400 text-sm">Days Alcohol Free</span>
             </div>
             <div className="text-center">
-              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.smokeDays}</span>
+              <span className="block text-5xl font-display font-bold gradient-text">{sobriety.smokeDays || 0}</span>
               <span className="text-gray-400 text-sm">Days Smoke Free</span>
             </div>
           </div>

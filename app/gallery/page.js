@@ -22,12 +22,19 @@ export default function GalleryPage() {
     }
 
     try {
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('gallery')
         .select('*')
-        .eq('is_public', true)
         .order('date', { ascending: false })
-      
+
+      // Show public media + user's own media if logged in
+      if (user) {
+        query = query.or(`is_public.eq.true,user_id.eq.${user.id}`)
+      } else {
+        query = query.eq('is_public', true)
+      }
+
+      const { data, error: fetchError } = await query
       if (fetchError) throw fetchError
       setMedia(data || [])
       setError(null)
@@ -36,6 +43,27 @@ export default function GalleryPage() {
       setError('Failed to load gallery. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this item?')) return
+    if (!supabase) {
+      setError('Database connection not available')
+      return
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('gallery')
+        .delete()
+        .eq('id', id)
+
+      if (deleteError) throw deleteError
+      await fetchMedia()
+    } catch (e) {
+      console.error('Error deleting media:', e)
+      setError('Failed to delete item. Please try again.')
     }
   }
 
@@ -93,11 +121,19 @@ export default function GalleryPage() {
           {filteredMedia.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {filteredMedia.map((item) => (
-                <div 
-                  key={item.id} 
-                  className="aspect-square rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-4xl"
+                <div
+                  key={item.id}
+                  className="relative aspect-square rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-4xl group"
                 >
                   {item.type === 'video' ? '🎬' : '📷'}
+                  {user && item.user_id === user.id && (
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="absolute top-2 right-2 bg-error text-white px-2 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      🗑️
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

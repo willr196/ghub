@@ -196,7 +196,10 @@ export default function GoalsPage() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeGoals.map((goal) => {
-              const progress = Math.round((goal.current / goal.target) * 100)
+              // Safely calculate progress - handle zero/null targets
+              const current = goal.current || 0
+              const target = goal.target || 1
+              const progress = Math.min(Math.round((current / target) * 100), 100)
               const circumference = 2 * Math.PI * 45
               const offset = circumference - (progress / 100) * circumference
               return (

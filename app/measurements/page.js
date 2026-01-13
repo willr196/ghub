@@ -12,6 +12,7 @@ export default function MeasurementsPage() {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({ weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '' })
 
   useEffect(() => { if (user) fetchMeasurements() }, [user])
@@ -53,20 +54,34 @@ export default function MeasurementsPage() {
     setError(null)
 
     try {
+      // Safely parse measurements - validate numbers and filter out NaN
       const cleanData = Object.fromEntries(
         Object.entries(formData)
           .filter(([_, v]) => v !== '')
           .map(([k, v]) => [k, parseFloat(v)])
+          .filter(([_, v]) => !isNaN(v))
       )
-      
-      const { error: insertError } = await supabase
-        .from('measurements')
-        .insert([{ ...cleanData, user_id: user.id, date: new Date().toISOString().split('T')[0] }])
-      
-      if (insertError) throw insertError
-      
+
+      if (editingId) {
+        // Update existing
+        const { error: updateError } = await supabase
+          .from('measurements')
+          .update(cleanData)
+          .eq('id', editingId)
+
+        if (updateError) throw updateError
+      } else {
+        // Insert new
+        const { error: insertError } = await supabase
+          .from('measurements')
+          .insert([{ ...cleanData, user_id: user.id, date: new Date().toISOString().split('T')[0] }])
+
+        if (insertError) throw insertError
+      }
+
       await fetchMeasurements()
       setShowForm(false)
+      setEditingId(null)
       setFormData({ weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '' })
     } catch (e) {
       console.error('Error saving measurements:', e)
@@ -74,6 +89,19 @@ export default function MeasurementsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleEdit = (measurement) => {
+    setEditingId(measurement.id)
+    setFormData({
+      weight: measurement.weight || '',
+      chest: measurement.chest || '',
+      waist: measurement.waist || '',
+      hips: measurement.hips || '',
+      arms: measurement.arms || '',
+      thighs: measurement.thighs || ''
+    })
+    setShowForm(true)
   }
 
   const latest = measurements[0] || {}
@@ -98,7 +126,14 @@ export default function MeasurementsPage() {
         <div className="max-w-5xl mx-auto animate-fadeIn space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="font-display text-3xl font-bold">📏 Body Measurements</h1>
-            <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+            <button
+              onClick={() => {
+                setShowForm(!showForm)
+                setEditingId(null)
+                setFormData({ weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '' })
+              }}
+              className="btn-primary"
+            >
               {showForm ? 'Cancel' : '+ Add Measurements'}
             </button>
           </div>
@@ -112,7 +147,7 @@ export default function MeasurementsPage() {
 
           {showForm && (
             <form onSubmit={handleSubmit} className="card space-y-4">
-              <h3 className="font-display text-lg font-semibold">Log New Measurements</h3>
+              <h3 className="font-display text-lg font-semibold">{editingId ? 'Edit Measurements' : 'Log New Measurements'}</h3>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Weight (lbs)</label>
@@ -176,7 +211,7 @@ export default function MeasurementsPage() {
                 </div>
               </div>
               <button type="submit" disabled={saving} className="btn-primary">
-                {saving ? 'Saving...' : 'Save Measurements'}
+                {saving ? 'Saving...' : editingId ? 'Update Measurements' : 'Save Measurements'}
               </button>
             </form>
           )}
@@ -194,7 +229,17 @@ export default function MeasurementsPage() {
             </div>
 
             <div className="card">
-              <h3 className="font-display text-lg font-semibold mb-4">Latest Measurements</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-display text-lg font-semibold">Latest Measurements</h3>
+                {latest.id && (
+                  <button
+                    onClick={() => handleEdit(latest)}
+                    className="btn-secondary text-sm"
+                  >
+                    ✏️ Edit
+                  </button>
+                )}
+              </div>
               <div className="space-y-3">
                 {[
                   { label: 'Chest', value: latest.chest },
@@ -218,8 +263,9 @@ export default function MeasurementsPage() {
               <div className="flex items-end justify-around h-48 gap-2">
                 {measurements.filter(m => m.weight).slice(0, 10).reverse().map((m, i) => {
                   const weights = measurements.filter(x => x.weight).map(x => x.weight)
-                  const min = Math.min(...weights)
-                  const max = Math.max(...weights)
+                  // Safely calculate min/max with fallbacks for edge cases
+                  const min = weights.length > 0 ? Math.min(...weights) : 0
+                  const max = weights.length > 0 ? Math.max(...weights) : 0
                   const range = max - min || 1
                   const height = ((m.weight - min) / range) * 100 + 20
                   return (

@@ -8,10 +8,12 @@ import { useAuth } from './AuthProvider'
 const navItems = [
   { id: 'dashboard', path: '/dashboard', icon: '📊', label: 'Dashboard', requiresAuth: true },
   { id: 'workouts', path: '/workouts', icon: '🏋️', label: 'Workouts', requiresAuth: true },
+  { id: 'library', path: '/library', icon: '📚', label: 'Workout Library', requiresAuth: true },
   { id: 'measurements', path: '/measurements', icon: '📏', label: 'Measurements', requiresAuth: true },
   { id: 'daily', path: '/daily', icon: '☀️', label: 'Daily Log', requiresAuth: true },
   { id: 'goals', path: '/goals', icon: '🎯', label: 'Goals', requiresAuth: true },
   { id: 'sobriety', path: '/sobriety', icon: '🌟', label: 'Sobriety', requiresAuth: true },
+  { id: 'profile', path: '/profile', icon: '👤', label: 'Profile', requiresAuth: true },
   { id: 'travel', path: '/travel', icon: '✈️', label: 'Travel', requiresAuth: false },
   { id: 'recipes', path: '/recipes', icon: '🍳', label: 'Recipes', requiresAuth: false },
   { id: 'blog', path: '/blog', icon: '📝', label: 'Blog', requiresAuth: false },
