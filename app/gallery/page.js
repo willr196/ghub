@@ -74,7 +74,7 @@ export default function GalleryPage() {
     return (
       <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 ml-64 p-8 flex items-center justify-center">
+        <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 flex items-center justify-center">
           <div className="spinner" />
         </main>
       </div>
@@ -84,7 +84,7 @@ export default function GalleryPage() {
   return (
     <div className="flex min-h-screen bg-dark-bg">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8">
+      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8">
         <div className="max-w-6xl mx-auto animate-fadeIn space-y-6">
           <h1 className="font-display text-3xl font-bold">📸 Progress Gallery</h1>
 

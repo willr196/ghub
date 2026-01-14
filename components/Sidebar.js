@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from './AuthProvider'
@@ -24,53 +24,107 @@ const navItems = [
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
   const pathname = usePathname()
-  const { user, signOut, isAuthenticated } = useAuth()
+  const { signOut, isAuthenticated } = useAuth()
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) setIsOpen(false)
+      else setIsOpen(true)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleSignOut = async () => {
     await signOut()
     window.location.href = '/'
   }
 
+  const handleNavClick = () => {
+    if (isMobile) setIsOpen(false)
+  }
+
   const visibleItems = isAuthenticated ? navItems : navItems.filter(item => !item.requiresAuth)
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-dark-card to-dark-bg border-r border-white/5 transition-all duration-300 z-50 ${isOpen ? 'w-64' : 'w-[72px]'}`}>
-      <div className="flex items-center justify-between p-5 border-b border-white/5">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="text-3xl animate-pulse-slow">💪</span>
-          {isOpen && <span className="font-display text-2xl font-bold gradient-text">GHUB</span>}
-        </Link>
-        <button onClick={() => setIsOpen(!isOpen)} className="w-7 h-7 rounded-md bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center">
-          {isOpen ? '◀' : '▶'}
+    <>
+      {/* Mobile hamburger button */}
+      {isMobile && !isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed top-4 left-4 z-50 w-12 h-12 rounded-xl bg-dark-card border border-white/10 text-white flex items-center justify-center shadow-lg hover:bg-white/10 transition-colors"
+          aria-label="Open menu"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </button>
-      </div>
+      )}
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">
-        {visibleItems.map((item) => {
-          const isActive = pathname === item.path
-          return (
-            <Link key={item.id} href={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? 'gradient-bg text-white shadow-lg shadow-primary/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-              <span className="text-xl w-6 text-center">{item.icon}</span>
-              {isOpen && <span className="font-medium">{item.label}</span>}
-            </Link>
-          )
-        })}
-      </nav>
+      {/* Mobile backdrop */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/5">
-        {isAuthenticated ? (
-          <button onClick={handleSignOut} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-success text-success hover:bg-success/10 transition-colors">
-            <span>🔓</span>
-            {isOpen && <span>Sign Out</span>}
-          </button>
-        ) : (
-          <Link href="/login" className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 text-gray-400 hover:border-primary hover:text-primary transition-colors">
-            <span>🔐</span>
-            {isOpen && <span>Admin Login</span>}
+      {/* Sidebar */}
+      <aside className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-dark-card to-dark-bg border-r border-white/5 transition-all duration-300 z-50 ${
+        isMobile
+          ? `w-64 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`
+          : isOpen ? 'w-64' : 'w-[72px]'
+      }`}>
+        <div className="flex items-center justify-between p-5 border-b border-white/5">
+          <Link href="/" className="flex items-center gap-3" onClick={handleNavClick}>
+            <span className="text-3xl animate-pulse-slow">💪</span>
+            {(isOpen || isMobile) && <span className="font-display text-2xl font-bold gradient-text">GHUB</span>}
           </Link>
-        )}
-      </div>
-    </aside>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="w-7 h-7 rounded-md bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center"
+            aria-label={isOpen ? 'Close menu' : 'Open menu'}
+          >
+            {isMobile ? '✕' : isOpen ? '◀' : '▶'}
+          </button>
+        </div>
+
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">
+          {visibleItems.map((item) => {
+            const isActive = pathname === item.path
+            return (
+              <Link
+                key={item.id}
+                href={item.path}
+                onClick={handleNavClick}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? 'gradient-bg text-white shadow-lg shadow-primary/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+              >
+                <span className="text-xl w-6 text-center">{item.icon}</span>
+                {(isOpen || isMobile) && <span className="font-medium">{item.label}</span>}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/5">
+          {isAuthenticated ? (
+            <button onClick={handleSignOut} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-success text-success hover:bg-success/10 transition-colors">
+              <span>🔓</span>
+              {(isOpen || isMobile) && <span>Sign Out</span>}
+            </button>
+          ) : (
+            <Link href="/login" onClick={handleNavClick} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 text-gray-400 hover:border-primary hover:text-primary transition-colors">
+              <span>🔐</span>
+              {(isOpen || isMobile) && <span>Admin Login</span>}
+            </Link>
+          )}
+        </div>
+      </aside>
+    </>
   )
 }
