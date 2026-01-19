@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
@@ -8,6 +8,23 @@ import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
 export default function DailyPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 flex items-center justify-center">
+            <div className="spinner" />
+          </main>
+        </div>
+      }
+    >
+      <DailyPageInner />
+    </Suspense>
+  )
+}
+
+function DailyPageInner() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [log, setLog] = useState({ water_intake: 0, sleep_hours: 7, sleep_quality: 3, mood: 'okay', energy: 3, notes: '' })
