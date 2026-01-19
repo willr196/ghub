@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
@@ -10,9 +11,13 @@ const workoutTypes = ['Strength', 'Cardio', 'HIIT', 'Flexibility', 'Sports', 'Ot
 
 export default function WorkoutsPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [workouts, setWorkouts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [overloadTip, setOverloadTip] = useState('')
+  const [nextWorkoutLink, setNextWorkoutLink] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showExercises, setShowExercises] = useState(false)
@@ -51,6 +56,11 @@ export default function WorkoutsPage() {
   }, [user])
 
   useEffect(() => { if (user) fetchWorkouts() }, [user, fetchWorkouts])
+  useEffect(() => {
+    if (searchParams.get('onboarding') === '1') {
+      setShowForm(true)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -61,6 +71,9 @@ export default function WorkoutsPage() {
 
     setSaving(true)
     setError(null)
+    setSuccessMessage('')
+    setOverloadTip('')
+    setNextWorkoutLink('')
 
     try {
       const { error: insertError } = await supabase
@@ -77,6 +90,70 @@ export default function WorkoutsPage() {
         }])
 
       if (insertError) throw insertError
+
+      const { data: recentSame, error: recentSameError } = await supabase
+        .from('workouts')
+        .select('id, duration, calories, exercises, created_at')
+        .eq('user_id', user.id)
+        .eq('type', formData.type)
+        .order('created_at', { ascending: false })
+        .limit(2)
+
+      if (recentSameError) throw recentSameError
+
+      const previous = recentSame && recentSame.length > 1 ? recentSame[1] : null
+      const current = {
+        duration: formData.duration,
+        calories: formData.calories,
+        exercises: formData.exercises
+      }
+
+      const getVolume = (workout) => {
+        if (!workout?.exercises || workout.exercises.length === 0) return null
+        return workout.exercises.reduce((sum, ex) => {
+          const sets = Number(ex.sets) || 0
+          const reps = Number(ex.reps) || 0
+          const weightMatch = String(ex.weight || '').match(/[\d.]+/)
+          const weight = weightMatch ? Number(weightMatch[0]) : 0
+          return sum + (sets * reps * weight)
+        }, 0)
+      }
+
+      const currentVolume = getVolume(current)
+      const previousVolume = getVolume(previous)
+
+      let tip = 'Great start. Next time, add a small increase (1 rep or 5 minutes).'
+      if (previous) {
+        if (currentVolume !== null && previousVolume !== null) {
+          if (currentVolume <= previousVolume) {
+            tip = 'Next time, aim for +1 rep per set or +5 lb on one lift.'
+          } else {
+            tip = 'Nice increase. Keep it steady or add 1-2 reps next time.'
+          }
+        } else if ((current.duration || 0) <= (previous.duration || 0)) {
+          tip = 'Next time, try +5 minutes or a slightly higher pace.'
+        } else {
+          tip = 'Nice. Keep duration steady and add intensity next time.'
+        }
+      }
+
+      const toCalendarDate = (date) => {
+        const pad = (n) => String(n).padStart(2, '0')
+        return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`
+      }
+
+      const nextDate = new Date()
+      nextDate.setDate(nextDate.getDate() + 1)
+      const start = toCalendarDate(nextDate)
+      const endDate = new Date(nextDate)
+      endDate.setDate(endDate.getDate() + 1)
+      const end = toCalendarDate(endDate)
+      const title = encodeURIComponent(`Next ${formData.type} session`)
+      const details = encodeURIComponent('Planned workout from GHUB. Keep the streak going.')
+      setNextWorkoutLink(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&dates=${start}/${end}`)
+
+      setSuccessMessage('Workout saved.')
+      setOverloadTip(tip)
 
       await fetchWorkouts()
       setShowForm(false)
@@ -141,10 +218,38 @@ export default function WorkoutsPage() {
         <div className="max-w-5xl mx-auto animate-fadeIn space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="font-display text-3xl font-bold">🏋️ Workout Tracker</h1>
-            <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+            <button onClick={() => setShowForm(!showForm)} aria-expanded={showForm} className="btn-primary">
               {showForm ? 'Cancel' : '+ Add Workout'}
             </button>
           </div>
+
+          {searchParams.get('onboarding') === '1' && (
+            <div className="bg-primary/10 border border-primary/20 text-primary-light px-4 py-3 rounded-lg">
+              Start strong: log your first workout to establish your baseline.
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="bg-success/10 border border-success/20 text-success px-4 py-3 rounded-lg">
+              <div className="font-medium">{successMessage}</div>
+              {overloadTip && <div className="text-sm text-gray-400 mt-1">{overloadTip}</div>}
+              {nextWorkoutLink && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <a
+                    href={nextWorkoutLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-secondary text-sm"
+                  >
+                    Schedule next workout
+                  </a>
+                  <a href="/library" className="text-sm text-gray-400 hover:text-white">
+                    Build a routine in the library →
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
 
           {error && (
             <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg">
@@ -219,13 +324,14 @@ export default function WorkoutsPage() {
                       <div key={index} className="p-4 bg-white/5 rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-gray-400">Exercise {index + 1}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeExercise(index)}
-                            className="text-error text-sm hover:text-red-400"
-                          >
-                            Remove
-                          </button>
+                        <button
+                          type="button"
+                          onClick={() => removeExercise(index)}
+                          aria-label={`Remove exercise ${index + 1}`}
+                          className="text-error text-sm hover:text-red-400"
+                        >
+                          Remove
+                        </button>
                         </div>
                         <div className="grid md:grid-cols-2 gap-3">
                           <input
@@ -293,6 +399,7 @@ export default function WorkoutsPage() {
                         <span className="text-sm text-gray-400">🔥 {w.calories} kcal</span>
                         <button
                           onClick={() => handleDelete(w.id)}
+                          aria-label={`Delete workout ${w.name}`}
                           className="text-error hover:text-red-400 transition-colors"
                         >
                           🗑️

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
@@ -8,6 +9,7 @@ import Sidebar from '@/components/Sidebar'
 
 export default function DailyPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [log, setLog] = useState({ water_intake: 0, sleep_hours: 7, sleep_quality: 3, mood: 'okay', energy: 3, notes: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -132,6 +134,12 @@ export default function DailyPage() {
             </p>
           </div>
 
+          {searchParams.get('onboarding') === '1' && (
+            <div className="bg-primary/10 border border-primary/20 text-primary-light px-4 py-3 rounded-lg">
+              Quick recovery check-in to build consistency.
+            </div>
+          )}
+
           {error && (
             <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg">
               {error}
@@ -154,6 +162,7 @@ export default function DailyPage() {
                   <button 
                     key={i} 
                     onClick={() => setLog({...log, water_intake: i + 1})} 
+                    aria-label={`Set water intake to ${i + 1} glasses`}
                     className={`text-3xl transition-all ${i < log.water_intake ? 'opacity-100 scale-110' : 'opacity-30 hover:opacity-50'}`}
                   >
                     💧
@@ -182,13 +191,14 @@ export default function DailyPage() {
                 <span className="text-sm text-gray-400 block mb-2">Quality</span>
                 <div className="flex justify-center gap-2">
                   {[1, 2, 3, 4, 5].map(q => (
-                    <button 
-                      key={q} 
-                      onClick={() => setLog({...log, sleep_quality: q})} 
-                      className={`text-2xl ${log.sleep_quality >= q ? 'opacity-100' : 'opacity-30'}`}
-                    >
-                      ⭐
-                    </button>
+                  <button 
+                    key={q} 
+                    onClick={() => setLog({...log, sleep_quality: q})} 
+                    aria-label={`Set sleep quality to ${q} out of 5`}
+                    className={`text-2xl ${log.sleep_quality >= q ? 'opacity-100' : 'opacity-30'}`}
+                  >
+                    ⭐
+                  </button>
                   ))}
                 </div>
               </div>
@@ -202,6 +212,7 @@ export default function DailyPage() {
                   <button 
                     key={m.value} 
                     onClick={() => setLog({...log, mood: m.value})} 
+                    aria-label={`Set mood to ${m.value}`}
                     className={`text-4xl transition-all ${log.mood === m.value ? 'scale-125' : 'opacity-40 hover:opacity-70'}`}
                   >
                     {m.emoji}
@@ -218,6 +229,7 @@ export default function DailyPage() {
                   <button 
                     key={e} 
                     onClick={() => setLog({...log, energy: e})} 
+                    aria-label={`Set energy to ${e} out of 5`}
                     className={`text-3xl transition-all ${log.energy >= e ? 'opacity-100' : 'opacity-30'}`}
                   >
                     ⚡

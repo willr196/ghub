@@ -45,6 +45,37 @@ A comprehensive fitness tracking web app built as a Christmas gift! Track workou
 5. Click **"Run"** (or Cmd/Ctrl + Enter)
 6. You should see "Success. No rows returned" - that's good!
 
+**If you already ran the schema previously**, add these new columns to support onboarding state:
+```sql
+alter table public.profiles
+  add column if not exists onboarding_completed boolean default false,
+  add column if not exists onboarding_hide_until timestamp with time zone;
+```
+
+**If you already ran the schema previously**, add the auth trigger to auto-create profiles:
+```sql
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, created_at, updated_at)
+  values (new.id, new.email, now(), now())
+  on conflict (id) do update set email = excluded.email, updated_at = now();
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute procedure public.handle_new_user();
+```
+
+**RLS note:** the client-side onboarding fallback uses an upsert on `profiles`. If inserts fail, ensure this policy exists:
+```sql
+create policy "Users can insert own profile" on public.profiles
+  for insert with check (auth.uid() = id);
+```
+
 ### Step 3: Get Your Supabase Keys
 
 1. Go to **Settings** → **API** (left sidebar)
@@ -90,6 +121,7 @@ git push -u origin main
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
 | `SECRET_CODE` | `GHUB_CHRISTMAS_2024` (or change this!) |
+| `NEXT_PUBLIC_SITE_URL` | Your Vercel URL (for metadata and sitemap) |
 
 5. Click **"Deploy"**
 6. Wait 1-2 minutes for the build

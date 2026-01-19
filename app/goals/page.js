@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
@@ -8,6 +9,7 @@ import Sidebar from '@/components/Sidebar'
 
 export default function GoalsPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -41,6 +43,11 @@ export default function GoalsPage() {
   }, [user])
 
   useEffect(() => { if (user) fetchGoals() }, [user, fetchGoals])
+  useEffect(() => {
+    if (searchParams.get('onboarding') === '1') {
+      setShowForm(true)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -129,10 +136,16 @@ export default function GoalsPage() {
         <div className="max-w-5xl mx-auto animate-fadeIn space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="font-display text-3xl font-bold">🎯 Goals & Milestones</h1>
-            <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+            <button onClick={() => setShowForm(!showForm)} aria-expanded={showForm} className="btn-primary">
               {showForm ? 'Cancel' : '+ New Goal'}
             </button>
           </div>
+
+          {searchParams.get('onboarding') === '1' && (
+            <div className="bg-primary/10 border border-primary/20 text-primary-light px-4 py-3 rounded-lg">
+              Set a measurable goal so every workout has a target.
+            </div>
+          )}
 
           {error && (
             <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg">

@@ -18,11 +18,24 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [quote, setQuote] = useState('')
   const [dailyLog, setDailyLog] = useState({ water_intake: 0, sleep_hours: 0, mood: '', energy: 0 })
+  const [dailyLogExists, setDailyLogExists] = useState(false)
   const [sobriety, setSobriety] = useState({ alcoholDays: 0, smokeDays: 0 })
   const [recentWorkouts, setRecentWorkouts] = useState([])
+  const [hasAnyWorkout, setHasAnyWorkout] = useState(false)
   const [goals, setGoals] = useState([])
+  const [hasAnyGoal, setHasAnyGoal] = useState(false)
+  const [weeklyStats, setWeeklyStats] = useState({
+    thisWeekCount: 0,
+    lastWeekCount: 0,
+    thisWeekDuration: 0,
+    lastWeekDuration: 0,
+    thisWeekCalories: 0,
+    lastWeekCalories: 0
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [onboardingState, setOnboardingState] = useState({ completed: false, hideUntil: null, loaded: false })
+  const [dismissedOnboarding, setDismissedOnboarding] = useState(false)
 
   const fetchDashboardData = useCallback(async () => {
     if (!supabase) {
@@ -38,6 +51,9 @@ export default function DashboardPage() {
       const startOfWeek = new Date(now)
       startOfWeek.setDate(now.getDate() - dayOfWeek)
       startOfWeek.setHours(0, 0, 0, 0)
+      const lastWeekStart = new Date(startOfWeek)
+      lastWeekStart.setDate(startOfWeek.getDate() - 7)
+      const lastWeekEnd = new Date(startOfWeek)
 
       // Fetch workouts from this week
       const { data: workouts, error: workoutsError } = await supabase
@@ -50,6 +66,41 @@ export default function DashboardPage() {
       if (workoutsError) throw workoutsError
       if (workouts) setRecentWorkouts(workouts)
 
+      const thisWeekDuration = (workouts || []).reduce((sum, w) => sum + (w.duration || 0), 0)
+      const thisWeekCalories = (workouts || []).reduce((sum, w) => sum + (w.calories || 0), 0)
+      const thisWeekCount = (workouts || []).length
+
+      const { data: anyWorkout, error: anyWorkoutError } = await supabase
+        .from('workouts')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+
+      if (anyWorkoutError) throw anyWorkoutError
+      setHasAnyWorkout((anyWorkout || []).length > 0)
+
+      const { data: lastWeekWorkouts, error: lastWeekError } = await supabase
+        .from('workouts')
+        .select('duration, calories')
+        .eq('user_id', user.id)
+        .gte('date', lastWeekStart.toISOString().split('T')[0])
+        .lt('date', lastWeekEnd.toISOString().split('T')[0])
+
+      if (lastWeekError) throw lastWeekError
+
+      const lastWeekDuration = (lastWeekWorkouts || []).reduce((sum, w) => sum + (w.duration || 0), 0)
+      const lastWeekCalories = (lastWeekWorkouts || []).reduce((sum, w) => sum + (w.calories || 0), 0)
+      const lastWeekCount = (lastWeekWorkouts || []).length
+
+      setWeeklyStats({
+        thisWeekCount,
+        lastWeekCount,
+        thisWeekDuration,
+        lastWeekDuration,
+        thisWeekCalories,
+        lastWeekCalories
+      })
+
       // Fetch today's log
       const today = new Date().toISOString().split('T')[0]
       const { data: log, error: logError } = await supabase
@@ -61,7 +112,12 @@ export default function DashboardPage() {
       
       // single() throws error if no row found, which is okay
       if (logError && logError.code !== 'PGRST116') throw logError
-      if (log) setDailyLog(log)
+      if (log) {
+        setDailyLog(log)
+        setDailyLogExists(true)
+      } else {
+        setDailyLogExists(false)
+      }
 
       // Fetch goals
       const { data: goalsData, error: goalsError } = await supabase
@@ -73,6 +129,15 @@ export default function DashboardPage() {
       
       if (goalsError) throw goalsError
       if (goalsData) setGoals(goalsData)
+
+      const { data: anyGoal, error: anyGoalError } = await supabase
+        .from('goals')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+
+      if (anyGoalError) throw anyGoalError
+      setHasAnyGoal((anyGoal || []).length > 0)
 
       // Fetch sobriety data
       const { data: sobrietyData, error: sobrietyError } = await supabase
@@ -101,6 +166,47 @@ export default function DashboardPage() {
     if (user) fetchDashboardData()
   }, [user, fetchDashboardData])
 
+  useEffect(() => {
+    if (!user || !supabase) return
+    const fetchOnboardingState = async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('profiles')
+          .select('onboarding_completed, onboarding_hide_until')
+          .eq('id', user.id)
+          .single()
+
+        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
+
+        if (fetchError?.code === 'PGRST116') {
+          console.warn('Profile row missing, attempting fallback create.')
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: user.id,
+              email: user.email,
+              onboarding_completed: false,
+              onboarding_hide_until: null,
+              updated_at: new Date().toISOString()
+            })
+
+          if (upsertError) throw upsertError
+        }
+
+        setOnboardingState({
+          completed: Boolean(data?.onboarding_completed),
+          hideUntil: data?.onboarding_hide_until || null,
+          loaded: true
+        })
+      } catch (e) {
+        console.error('Error fetching onboarding state:', e)
+        setOnboardingState((prev) => ({ ...prev, loaded: true }))
+      }
+    }
+
+    fetchOnboardingState()
+  }, [user])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -109,8 +215,123 @@ export default function DashboardPage() {
     )
   }
 
+  const onboardingSteps = [
+    {
+      id: 'goal',
+      label: 'Set your first goal',
+      detail: 'Define a measurable target to train toward.',
+      done: hasAnyGoal,
+      href: '/goals?onboarding=1'
+    },
+    {
+      id: 'workout',
+      label: 'Log your first workout',
+      detail: 'Capture today\'s session to start your baseline.',
+      done: hasAnyWorkout,
+      href: '/workouts?onboarding=1'
+    },
+    {
+      id: 'daily',
+      label: 'Complete today\'s wellness log',
+      detail: 'Sleep, water, and energy build the recovery signal.',
+      done: dailyLogExists,
+      href: '/daily?onboarding=1'
+    }
+  ]
+
+  const onboardingComplete = onboardingSteps.every((step) => step.done)
+
+  useEffect(() => {
+    if (!user || !supabase) return
+    if (!onboardingComplete || onboardingState.completed) return
+
+    const markComplete = async () => {
+      try {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ onboarding_completed: true, onboarding_hide_until: null })
+          .eq('id', user.id)
+
+        if (updateError) throw updateError
+        setOnboardingState((prev) => ({ ...prev, completed: true, hideUntil: null }))
+      } catch (e) {
+        console.error('Error updating onboarding completion:', e)
+      }
+    }
+
+    markComplete()
+  }, [onboardingComplete, onboardingState.completed, user])
+
+  const handleHideOnboarding = async () => {
+    if (!user || !supabase) return
+    const threeDays = 3 * 24 * 60 * 60 * 1000
+    const hideUntil = new Date(Date.now() + threeDays).toISOString()
+    setDismissedOnboarding(true)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ onboarding_hide_until: hideUntil })
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+      setOnboardingState((prev) => ({ ...prev, hideUntil }))
+    } catch (e) {
+      console.error('Error updating onboarding hide state:', e)
+    }
+  }
+
+  const hideUntilTs = onboardingState.hideUntil ? new Date(onboardingState.hideUntil).getTime() : 0
+  const shouldShowOnboarding = !dismissedOnboarding
+    && !onboardingComplete
+    && !onboardingState.completed
+    && (!hideUntilTs || Date.now() > hideUntilTs)
+
+  const renderDelta = (current, previous, unit) => {
+    if (!previous) return 'No prior week data'
+    const diff = current - previous
+    const sign = diff > 0 ? '+' : ''
+    return `${sign}${diff} ${unit} vs last week`
+  }
+
   return (
     <div className="space-y-8">
+      {shouldShowOnboarding && (
+        <div className="card border border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="font-display text-2xl font-bold">Start your first 7 days</h2>
+              <p className="text-gray-400 mt-1">
+                Build momentum with a goal, a workout, and today's recovery signal.
+              </p>
+            </div>
+            <button onClick={handleHideOnboarding} className="btn-secondary text-sm">
+              Remind me later
+            </button>
+          </div>
+
+          <div className="mt-6 grid md:grid-cols-3 gap-4">
+            {onboardingSteps.map((step) => (
+              <div key={step.id} className="p-4 bg-white/5 rounded-lg border border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">{step.label}</span>
+                  <span className={`text-xs ${step.done ? 'text-success' : 'text-gray-500'}`}>
+                    {step.done ? 'Done' : 'Next'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400 mb-4">{step.detail}</p>
+                {step.done ? (
+                  <span className="text-success text-sm">✓ Completed</span>
+                ) : (
+                  <Link href={step.href} className="btn-primary text-sm px-4 py-2 inline-flex">
+                    Start
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {error && (
         <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg">
           {error}
@@ -127,6 +348,30 @@ export default function DashboardPage() {
         <StatCard icon="💧" label="Water Today" value={`${dailyLog.water_intake || 0}/8`} unit="glasses" color="blue" />
         <StatCard icon="😴" label="Sleep Last Night" value={dailyLog.sleep_hours || '-'} unit="hrs" color="purple" />
         <StatCard icon="⚡" label="Energy Level" value={dailyLog.energy || '-'} unit="/5" color="yellow" />
+      </div>
+
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg font-semibold">📈 Weekly Momentum</h3>
+          <span className="text-xs text-gray-500">Week over week</span>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="p-4 bg-white/5 rounded-lg">
+            <p className="text-sm text-gray-400">Workouts</p>
+            <p className="text-2xl font-display font-bold">{weeklyStats.thisWeekCount}</p>
+            <p className="text-xs text-gray-500">{renderDelta(weeklyStats.thisWeekCount, weeklyStats.lastWeekCount, 'sessions')}</p>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <p className="text-sm text-gray-400">Training Minutes</p>
+            <p className="text-2xl font-display font-bold">{weeklyStats.thisWeekDuration}</p>
+            <p className="text-xs text-gray-500">{renderDelta(weeklyStats.thisWeekDuration, weeklyStats.lastWeekDuration, 'min')}</p>
+          </div>
+          <div className="p-4 bg-white/5 rounded-lg">
+            <p className="text-sm text-gray-400">Calories Burned</p>
+            <p className="text-2xl font-display font-bold">{weeklyStats.thisWeekCalories}</p>
+            <p className="text-xs text-gray-500">{renderDelta(weeklyStats.thisWeekCalories, weeklyStats.lastWeekCalories, 'kcal')}</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

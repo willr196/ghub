@@ -5,21 +5,45 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from './AuthProvider'
 
-const navItems = [
-  { id: 'dashboard', path: '/dashboard', icon: '📊', label: 'Dashboard', requiresAuth: true },
-  { id: 'workouts', path: '/workouts', icon: '🏋️', label: 'Workouts', requiresAuth: true },
-  { id: 'library', path: '/library', icon: '📚', label: 'Workout Library', requiresAuth: true },
-  { id: 'measurements', path: '/measurements', icon: '📏', label: 'Measurements', requiresAuth: true },
-  { id: 'daily', path: '/daily', icon: '☀️', label: 'Daily Log', requiresAuth: true },
-  { id: 'goals', path: '/goals', icon: '🎯', label: 'Goals', requiresAuth: true },
-  { id: 'sobriety', path: '/sobriety', icon: '🌟', label: 'Sobriety', requiresAuth: true },
-  { id: 'profile', path: '/profile', icon: '👤', label: 'Profile', requiresAuth: true },
-  { id: 'travel', path: '/travel', icon: '✈️', label: 'Travel', requiresAuth: false },
-  { id: 'recipes', path: '/recipes', icon: '🍳', label: 'Recipes', requiresAuth: false },
-  { id: 'blog', path: '/blog', icon: '📝', label: 'Blog', requiresAuth: false },
-  { id: 'gallery', path: '/gallery', icon: '📸', label: 'Gallery', requiresAuth: false },
-  { id: 'science', path: '/science', icon: '🔬', label: 'Science', requiresAuth: false },
-  { id: 'merch', path: '/merch', icon: '🛍️', label: 'Merch', requiresAuth: false },
+const navSections = [
+  {
+    id: 'track',
+    label: 'Track',
+    items: [
+      { id: 'dashboard', path: '/dashboard', icon: '📊', label: 'Dashboard', requiresAuth: true },
+      { id: 'workouts', path: '/workouts', icon: '🏋️', label: 'Workouts', requiresAuth: true },
+      { id: 'daily', path: '/daily', icon: '☀️', label: 'Daily Log', requiresAuth: true },
+      { id: 'goals', path: '/goals', icon: '🎯', label: 'Goals', requiresAuth: true },
+      { id: 'measurements', path: '/measurements', icon: '📏', label: 'Measurements', requiresAuth: true },
+      { id: 'library', path: '/library', icon: '📚', label: 'Workout Library', requiresAuth: true },
+      { id: 'sobriety', path: '/sobriety', icon: '🌟', label: 'Sobriety', requiresAuth: true },
+      { id: 'gallery', path: '/gallery', icon: '📸', label: 'Progress Gallery', requiresAuth: false },
+    ],
+  },
+  {
+    id: 'learn',
+    label: 'Learn',
+    items: [
+      { id: 'blog', path: '/blog', icon: '📝', label: 'Blog', requiresAuth: false },
+      { id: 'science', path: '/science', icon: '🔬', label: 'Science', requiresAuth: false },
+      { id: 'recipes', path: '/recipes', icon: '🍳', label: 'Recipes', requiresAuth: false },
+    ],
+  },
+  {
+    id: 'account',
+    label: 'Account',
+    items: [
+      { id: 'profile', path: '/profile', icon: '👤', label: 'Profile', requiresAuth: true },
+    ],
+  },
+  {
+    id: 'extras',
+    label: 'More',
+    items: [
+      { id: 'travel', path: '/travel', icon: '✈️', label: 'Travel', requiresAuth: false },
+      { id: 'merch', path: '/merch', icon: '🛍️', label: 'Merch', requiresAuth: false },
+    ],
+  },
 ]
 
 export default function Sidebar() {
@@ -49,7 +73,12 @@ export default function Sidebar() {
     if (isMobile) setIsOpen(false)
   }
 
-  const visibleItems = isAuthenticated ? navItems : navItems.filter(item => !item.requiresAuth)
+  const visibleSections = navSections.map((section) => ({
+    ...section,
+    items: isAuthenticated
+      ? section.items
+      : section.items.filter(item => !item.requiresAuth)
+  })).filter(section => section.items.length > 0)
 
   return (
     <>
@@ -94,21 +123,30 @@ export default function Sidebar() {
           </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">
-          {visibleItems.map((item) => {
-            const isActive = pathname === item.path
-            return (
-              <Link
-                key={item.id}
-                href={item.path}
-                onClick={handleNavClick}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? 'gradient-bg text-white shadow-lg shadow-primary/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-              >
-                <span className="text-xl w-6 text-center">{item.icon}</span>
-                {(isOpen || isMobile) && <span className="font-medium">{item.label}</span>}
-              </Link>
-            )
-          })}
+        <nav className="flex-1 p-3 space-y-4 overflow-y-auto max-h-[calc(100vh-180px)]">
+          {visibleSections.map((section) => (
+            <div key={section.id} className="space-y-1">
+              {(isOpen || isMobile) && (
+                <div className="px-4 pt-3 pb-1 text-xs uppercase tracking-widest text-gray-500">
+                  {section.label}
+                </div>
+              )}
+              {section.items.map((item) => {
+                const isActive = pathname === item.path
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.path}
+                    onClick={handleNavClick}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? 'gradient-bg text-white shadow-lg shadow-primary/30' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                  >
+                    <span className="text-xl w-6 text-center">{item.icon}</span>
+                    {(isOpen || isMobile) && <span className="font-medium">{item.label}</span>}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/5">
@@ -120,7 +158,7 @@ export default function Sidebar() {
           ) : (
             <Link href="/login" onClick={handleNavClick} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-white/10 text-gray-400 hover:border-primary hover:text-primary transition-colors">
               <span>🔐</span>
-              {(isOpen || isMobile) && <span>Admin Login</span>}
+              {(isOpen || isMobile) && <span>Sign In</span>}
             </Link>
           )}
         </div>

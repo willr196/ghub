@@ -159,6 +159,7 @@ export default function BlogPage() {
                   setEditingId(null)
                   setFormData({ title: '', content: '', excerpt: '', is_public: true })
                 }}
+                aria-expanded={showForm}
                 className="btn-primary"
               >
                 {showForm ? 'Cancel' : '+ Write Post'}
@@ -169,7 +170,7 @@ export default function BlogPage() {
           {error && (
             <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg">
               {error}
-              <button onClick={() => setError(null)} className="ml-4 text-error/70 hover:text-error">✕</button>
+              <button onClick={() => setError(null)} aria-label="Dismiss error message" className="ml-4 text-error/70 hover:text-error">✕</button>
             </div>
           )}
 
