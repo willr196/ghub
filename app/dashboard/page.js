@@ -207,14 +207,8 @@ export default function DashboardPage() {
     fetchOnboardingState()
   }, [user])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="spinner" />
-      </div>
-    )
-  }
-
+  // Compute onboarding steps and completion status
+  // These need to be computed before the useEffect that depends on them
   const onboardingSteps = [
     {
       id: 'goal',
@@ -241,6 +235,7 @@ export default function DashboardPage() {
 
   const onboardingComplete = onboardingSteps.every((step) => step.done)
 
+  // This useEffect MUST come before any early returns
   useEffect(() => {
     if (!user || !supabase) return
     if (!onboardingComplete || onboardingState.completed) return
@@ -261,6 +256,15 @@ export default function DashboardPage() {
 
     markComplete()
   }, [onboardingComplete, onboardingState.completed, user])
+
+  // Early return for loading state - AFTER all hooks
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="spinner" />
+      </div>
+    )
+  }
 
   const handleHideOnboarding = async () => {
     if (!user || !supabase) return
@@ -302,7 +306,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="font-display text-2xl font-bold">Start your first 7 days</h2>
               <p className="text-gray-400 mt-1">
-                Build momentum with a goal, a workout, and today's recovery signal.
+                Build momentum with a goal, a workout, and today&apos;s recovery signal.
               </p>
             </div>
             <button onClick={handleHideOnboarding} className="btn-secondary text-sm">
