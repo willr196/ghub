@@ -43,8 +43,8 @@ export default function RegisterPage() {
 
       const codeResult = await codeResponse.json()
 
-      if (!codeResult.valid) {
-        setError('Invalid secret code. Please enter the correct code to register.')
+      if (!codeResponse.ok || !codeResult.valid) {
+        setError(codeResult.error || 'Unable to verify secret code right now.')
         setLoading(false)
         return
       }

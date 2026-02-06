@@ -178,6 +178,87 @@ npm run dev
 
 ---
 
+## 📚 Team Workflow (Run, Update, Deploy)
+
+Use this section as the default operating guide for anyone maintaining this project.
+
+### 1) First-time setup
+
+```bash
+git clone https://github.com/YOUR_USERNAME/ghub.git
+cd ghub
+npm install
+cp .env.example .env.local
+```
+
+Then set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SECRET_CODE`, and `NEXT_PUBLIC_SITE_URL` in `.env.local`.
+
+### 2) How to run locally
+
+```bash
+npm run dev
+```
+
+- App runs at `http://localhost:3000`
+- Use `npm run lint` before pushing
+- Use `npm run build` to verify production build locally
+
+### 3) Daily update workflow
+
+```bash
+# Start from latest main
+git checkout main
+git pull origin main
+
+# Create a feature branch
+git checkout -b feature/short-description
+
+# Work, then validate
+npm run lint
+npm run build
+
+# Commit and push
+git add .
+git commit -m "Describe change"
+git push -u origin feature/short-description
+```
+
+Open a Pull Request to `main` and merge after checks pass.
+
+### 4) Updating database schema (Supabase)
+
+When `supabase/schema.sql` changes:
+
+1. Open Supabase SQL Editor
+2. Apply only the new SQL changes (or run updated schema in a clean database)
+3. Confirm tables, policies, and triggers still work
+4. Test registration/login and one write action (example: adding a workout)
+
+Keep schema changes and app code in the same PR whenever possible.
+
+### 5) Deploy workflow (Vercel)
+
+1. Merge approved PR into `main`
+2. Vercel auto-deploys from `main`
+3. Verify deployment health:
+   - Site loads
+   - Auth works (register/login)
+   - One protected page loads (dashboard)
+4. If environment variables changed, update them in Vercel Project Settings before redeploying
+
+### 6) How to update dependencies safely
+
+```bash
+npm outdated
+npm update
+npm run lint
+npm run build
+```
+
+For major version bumps, update one package at a time and test before merging.
+
+---
+
 ## 🔒 Privacy
 
 - **Private data** (workouts, measurements, daily logs, goals, sobriety): Only visible to logged-in user

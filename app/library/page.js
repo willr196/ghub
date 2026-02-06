@@ -7,6 +7,10 @@ import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
 
+const templateGoals = ['Muscle gain', 'Cardio']
+const templateMuscleGroups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full body']
+const templateCardioModes = ['Treadmill', 'Bike', 'Rower', 'Stairmaster', 'Elliptical', 'Other']
+
 export default function WorkoutLibraryPage() {
   const { user } = useAuth()
   const [workouts, setWorkouts] = useState([])
@@ -18,6 +22,9 @@ export default function WorkoutLibraryPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    goal: 'Muscle gain',
+    muscle_group: 'Full body',
+    cardio_mode: 'Treadmill',
     estimated_duration: 30,
     exercises: [{ name: '', sets: 3, reps: 10, notes: '' }]
   })
@@ -63,6 +70,9 @@ export default function WorkoutLibraryPage() {
       const workoutData = {
         name: formData.name,
         description: formData.description,
+        goal: formData.goal,
+        muscle_group: formData.goal === 'Muscle gain' ? formData.muscle_group : null,
+        cardio_mode: formData.goal === 'Cardio' ? formData.cardio_mode : null,
         estimated_duration: parseInt(formData.estimated_duration) || 30,
         exercises: formData.exercises.filter(ex => ex.name.trim() !== ''),
         user_id: user.id
@@ -107,6 +117,9 @@ export default function WorkoutLibraryPage() {
     setFormData({
       name: workout.name,
       description: workout.description || '',
+      goal: workout.goal || 'Muscle gain',
+      muscle_group: workout.muscle_group || 'Full body',
+      cardio_mode: workout.cardio_mode || 'Treadmill',
       estimated_duration: workout.estimated_duration || 30,
       exercises: workout.exercises && workout.exercises.length > 0
         ? workout.exercises
@@ -164,17 +177,23 @@ export default function WorkoutLibraryPage() {
     }
 
     try {
+      const goal = workout.goal || 'Muscle gain'
+      const type = goal === 'Cardio' ? 'Cardio' : 'Strength'
+      const tags = goal === 'Cardio'
+        ? `#cardio${workout.cardio_mode ? ` #${String(workout.cardio_mode).toLowerCase()}` : ''}`
+        : `#muscle-gain${workout.muscle_group ? ` #${String(workout.muscle_group).toLowerCase().replace(/\\s+/g, '-')}` : ''}`
+
       const { error: insertError } = await supabase
         .from('workouts')
         .insert([{
           user_id: user.id,
           name: workout.name,
-          type: 'Strength',
+          type,
           duration: workout.estimated_duration,
           calories: 0,
           exercises: workout.exercises,
           date: getLocalDateString(),
-          notes: `From template: ${workout.name}`
+          notes: `From template: ${workout.name} ${tags}`.trim()
         }])
 
       if (insertError) throw insertError
@@ -206,6 +225,9 @@ export default function WorkoutLibraryPage() {
                 setFormData({
                   name: '',
                   description: '',
+                  goal: 'Muscle gain',
+                  muscle_group: 'Full body',
+                  cardio_mode: 'Treadmill',
                   estimated_duration: 30,
                   exercises: [{ name: '', sets: 3, reps: 10, notes: '' }]
                 })
@@ -239,6 +261,45 @@ export default function WorkoutLibraryPage() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Goal</label>
+                  <select
+                    value={formData.goal}
+                    onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+                  >
+                    {templateGoals.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {formData.goal === 'Muscle gain' ? (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Muscle Group</label>
+                    <select
+                      value={formData.muscle_group}
+                      onChange={(e) => setFormData({ ...formData, muscle_group: e.target.value })}
+                    >
+                      {templateMuscleGroups.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Cardio Mode</label>
+                    <select
+                      value={formData.cardio_mode}
+                      onChange={(e) => setFormData({ ...formData, cardio_mode: e.target.value })}
+                    >
+                      {templateCardioModes.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Estimated Duration (min)</label>
                   <input
@@ -332,6 +393,21 @@ export default function WorkoutLibraryPage() {
                     {workout.description && (
                       <p className="text-gray-400 text-sm mt-1">{workout.description}</p>
                     )}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className="text-xs px-2 py-1 bg-primary/20 text-primary-light rounded">
+                        {workout.goal || 'Muscle gain'}
+                      </span>
+                      {workout.goal === 'Muscle gain' && workout.muscle_group && (
+                        <span className="text-xs px-2 py-1 bg-white/5 text-gray-300 rounded">
+                          {workout.muscle_group}
+                        </span>
+                      )}
+                      {workout.goal === 'Cardio' && workout.cardio_mode && (
+                        <span className="text-xs px-2 py-1 bg-white/5 text-gray-300 rounded">
+                          {workout.cardio_mode}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="text-sm text-accent">⏱️ {workout.estimated_duration} min</span>
                 </div>

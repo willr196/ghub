@@ -158,10 +158,19 @@ create table if not exists public.workout_library (
   user_id uuid references public.profiles(id) on delete cascade not null,
   name text not null,
   description text,
+  goal text not null default 'Muscle gain',
+  muscle_group text,
+  cardio_mode text,
   exercises jsonb not null,
   estimated_duration integer,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Ensure workout_library classification columns exist on older installs
+alter table public.workout_library
+  add column if not exists goal text not null default 'Muscle gain',
+  add column if not exists muscle_group text,
+  add column if not exists cardio_mode text;
 
 -- Travel table
 create table if not exists public.travel (
