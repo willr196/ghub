@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { getLocalDateString } from '@/lib/date'
 import { useAuth } from '@/components/AuthProvider'
 
 const quotes = [
@@ -60,7 +61,7 @@ export default function DashboardPage() {
         .from('workouts')
         .select('*')
         .eq('user_id', user.id)
-        .gte('date', startOfWeek.toISOString().split('T')[0])
+        .gte('date', getLocalDateString(startOfWeek))
         .order('date', { ascending: false })
 
       if (workoutsError) throw workoutsError
@@ -83,8 +84,8 @@ export default function DashboardPage() {
         .from('workouts')
         .select('duration, calories')
         .eq('user_id', user.id)
-        .gte('date', lastWeekStart.toISOString().split('T')[0])
-        .lt('date', lastWeekEnd.toISOString().split('T')[0])
+        .gte('date', getLocalDateString(lastWeekStart))
+        .lt('date', getLocalDateString(lastWeekEnd))
 
       if (lastWeekError) throw lastWeekError
 
@@ -102,7 +103,7 @@ export default function DashboardPage() {
       })
 
       // Fetch today's log
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateString()
       const { data: log, error: logError } = await supabase
         .from('daily_logs')
         .select('*')

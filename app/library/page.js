@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getLocalDateString } from '@/lib/date'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
@@ -172,7 +173,7 @@ export default function WorkoutLibraryPage() {
           duration: workout.estimated_duration,
           calories: 0,
           exercises: workout.exercises,
-          date: new Date().toISOString().split('T')[0],
+          date: getLocalDateString(),
           notes: `From template: ${workout.name}`
         }])
 

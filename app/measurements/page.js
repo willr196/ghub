@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getLocalDateString } from '@/lib/date'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
@@ -75,7 +76,7 @@ export default function MeasurementsPage() {
         // Insert new
         const { error: insertError } = await supabase
           .from('measurements')
-          .insert([{ ...cleanData, user_id: user.id, date: new Date().toISOString().split('T')[0] }])
+          .insert([{ ...cleanData, user_id: user.id, date: getLocalDateString() }])
 
         if (insertError) throw insertError
       }

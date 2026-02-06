@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getLocalDateString } from '@/lib/date'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
@@ -36,7 +37,7 @@ export default function SobrietyPage() {
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState({ type: 'alcohol', start_date: new Date().toISOString().split('T')[0] })
+  const [formData, setFormData] = useState({ type: 'alcohol', start_date: getLocalDateString() })
 
   const fetchSobriety = useCallback(async () => {
     if (!supabase) {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense} from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { getLocalDateString } from '@/lib/date'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
@@ -105,7 +106,7 @@ function WorkoutsPageInner() {
           notes: formData.notes,
           exercises: formData.exercises.length > 0 ? formData.exercises.filter(e => e.name.trim()) : null,
           user_id: user.id,
-          date: new Date().toISOString().split('T')[0]
+          date: getLocalDateString()
         }])
 
       if (insertError) throw insertError

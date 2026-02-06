@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { getLocalDateString } from '@/lib/date'
 import { useAuth } from '@/components/AuthProvider'
 import RequireAuth from '@/components/RequireAuth'
 import Sidebar from '@/components/Sidebar'
@@ -33,7 +34,7 @@ function DailyPageInner() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
 
   const fetchLog = useCallback(async () => {
     if (!supabase) {
